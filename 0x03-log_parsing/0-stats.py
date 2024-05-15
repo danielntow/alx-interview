@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+"""read from standard input and print some stats"""
+
 import sys
 import signal
 
