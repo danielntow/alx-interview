@@ -1,63 +1,64 @@
 #!/usr/bin/python3
 """read from standard input and print some stats"""
 
+#!/usr/bin/python3
 import sys
 import signal
 
-# Initialize variables
-total_size = 0
-status_codes = {200: 0, 301: 0, 400: 0, 401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
-line_count = 0
 
-
-def print_stats():
-    """Print the accumulated statistics."""
+def print_stats(total_size, status_counts):
+    """Print accumulated metrics."""
     print("File size: {}".format(total_size))
-    for code in sorted(status_codes.keys()):
-        if status_codes[code] > 0:
-            print("{}: {}".format(code, status_codes[code]))
+    for code in sorted(status_counts.keys()):
+        print("{}: {}".format(code, status_counts[code]))
 
 
-def handle_sigint(signum, frame):
-    """Signal handler for keyboard interruption."""
-    print_stats()
+def signal_handler(sig, frame):
+    """Handle keyboard interruption."""
+    print_stats(total_size, status_counts)
     sys.exit(0)
 
 
-# Register the signal handler
-signal.signal(signal.SIGINT, handle_sigint)
+if __name__ == "__main__":
+    total_size = 0
+    status_counts = {}
+    valid_codes = {200, 301, 400, 401, 403, 404, 405, 500}
+    line_count = 0
 
-for line in sys.stdin:
-    line_count += 1
-    parts = line.split()
+    signal.signal(signal.SIGINT, signal_handler)
 
-    # Validate line format
-    if len(parts) < 7:
-        continue
-
-    # Extract the required parts from the line
-    ip, _, _, date, request, status_code, file_size = parts[
-        0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]
-
-    # Validate the request format
-    if not request.startswith('"GET /projects/260 HTTP/1.1"'):
-        continue
-
-    # Validate the status code and file size
     try:
-        status_code = int(status_code)
-        file_size = int(file_size)
-    except ValueError:
-        continue
+        for line in sys.stdin:
+            try:
+                parts = line.split()
+                if len(parts) != 10:
+                    continue
+                ip, dash, date, get, path, http, status, size, *rest = parts
 
-    # Accumulate the metrics
-    total_size += file_size
-    if status_code in status_codes:
-        status_codes[status_code] += 1
+                if get != '"GET' or path != '/projects/260' or http != 'HTTP/1.1"':
+                    continue
 
-    # Print statistics every 10 lines
-    if line_count % 10 == 0:
-        print_stats()
+                status = int(status)
+                size = int(size)
 
-# Print final statistics if the script ends without interruption
-print_stats()
+                total_size += size
+
+                if status in valid_codes:
+                    if status not in status_counts:
+                        status_counts[status] = 0
+                    status_counts[status] += 1
+
+                line_count += 1
+                if line_count == 10:
+                    print_stats(total_size, status_counts)
+                    line_count = 0
+
+            except ValueError:
+                continue
+
+    except KeyboardInterrupt:
+        print_stats(total_size, status_counts)
+        sys.exit(0)
+
+    # Print any remaining stats if the script finishes naturally
+    print_stats(total_size, status_counts)
