@@ -2,62 +2,50 @@
 """read from standard input and print some stats"""
 
 import sys
-import signal
 
 
-def print_stats(total_size, status_counts):
-    """Print accumulated metrics."""
-    print("File size: {}".format(total_size))
-    for code in sorted(status_counts.keys()):
-        print("{}: {}".format(code, status_counts[code]))
+def parse_line(line):
+    """
+    Parses a log line and extracts relevant information.
+    Returns a tuple: (status_code, file_size)
+    """
+    try:
+        parts = line.split()
+        status_code = int(parts[-2])
+        file_size = int(parts[-1])
+        return status_code, file_size
+    except (ValueError, IndexError):
+        return None, None
 
 
-def signal_handler(sig, frame):
-    """Handle keyboard interruption."""
-    print_stats(total_size, status_counts)
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    total_size = 0
-    status_counts = {}
-    valid_codes = {200, 301, 400, 401, 403, 404, 405, 500}
+def main():
+    total_file_size = 0
+    status_counts = {200: 0, 301: 0, 400: 0,
+                     401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
     line_count = 0
-
-    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         for line in sys.stdin:
-            try:
-                parts = line.split()
-                if len(parts) != 10:
-                    continue
-                ip, dash, date, get, path, http, status, size, *rest = parts
-
-                if get != '"GET' or path != '/projects/260' or http != 'HTTP/1.1"':
-                    continue
-
-                status = int(status)
-                size = int(size)
-
-                total_size += size
-
-                if status in valid_codes:
-                    if status not in status_counts:
-                        status_counts[status] = 0
-                    status_counts[status] += 1
-
+            status_code, file_size = parse_line(line)
+            if status_code is not None and file_size is not None:
+                total_file_size += file_size
+                status_counts[status_code] += 1
                 line_count += 1
-                if line_count == 10:
-                    print_stats(total_size, status_counts)
-                    line_count = 0
 
-            except ValueError:
-                continue
+                if line_count % 10 == 0:
+                    print(f"File size: {total_file_size}")
+                    for code in sorted(status_counts.keys()):
+                        if status_counts[code] > 0:
+                            print(f"{code}: {status_counts[code]}")
+                    print()
 
     except KeyboardInterrupt:
-        print_stats(total_size, status_counts)
-        sys.exit(0)
+        # Handle keyboard interruption
+        print(f"File size: {total_file_size}")
+        for code in sorted(status_counts.keys()):
+            if status_counts[code] > 0:
+                print(f"{code}: {status_counts[code]}")
 
-    # Print any remaining stats if the script finishes naturally
-    print_stats(total_size, status_counts)
+
+if __name__ == "__main__":
+    main()
