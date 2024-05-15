@@ -1,39 +1,71 @@
 #!/usr/bin/python3
-"""
-Log parsing
-"""
+"""read from standard input and print some stats"""
 
+
+import re
 import sys
 
-if __name__ == '__main__':
 
-    filesize, count = 0, 0
-    codes = ["200", "301", "400", "401", "403", "404", "405", "500"]
-    stats = {k: 0 for k in codes}
+def validate_input(line):
+    """validate the line"""
+    regx_addr = r'^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
+    regx_date = r'\[[0-9]{4}-[0-9]{2}-[0-9]{2}' +\
+        r'\s[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+\]'
+    regx_get = r'\"GET\s\/projects\/260\sHTTP\/1.1\"'
+    regx_status = r'\s[0-9]{3}\s'
+    regx_size = r'[0-9]+$'
+    x = regx_addr + r'\s-\s' + regx_date + r'\s' +\
+        regx_get + regx_status + regx_size
+    x = re.compile(x)
+    x = x.match(line)
+    if x is None:
+        return False
+    return True
 
-    def print_stats(stats: dict, file_size: int) -> None:
-        print("File size: {:d}".format(filesize))
-        for k, v in sorted(stats.items()):
-            if v:
-                print("{}: {}".format(k, v))
 
+def get_file_size(line):
+    """get filesize of this input"""
+    regx_size = r'[0-9]+$'
+    x = re.search(regx_size, line)
+    return (int(x.group()))
+
+
+def get_status(line):
+    """get the status of this line"""
+    regx_status = r'\s[0-9]{3}\s'
+    x = re.search(regx_status, line)
+    x = re.search(r'[0-9]{3}', x.group())
+    return (x.group())
+
+
+def print_info(size, stat):
+    """print the stored infomation so far"""
+    print('File size: {}'.format(size))
+    status = [200, 301, 400, 401, 403, 404, 405, 500]
+    for i in status:
+        if stat[str(i)] > 0:
+            print('{}: {}'.format(str(i), stat[str(i)]))
+
+
+if __name__ == "__main__":
+    line_number = 1
+    stat = {"200": 0, "301": 0, "400": 0,
+            "401": 0, "403": 0, "404": 0, "405": 0, "500": 0}
+    totalsize = 0
     try:
         for line in sys.stdin:
-            count += 1
-            data = line.split()
-            try:
-                status_code = data[-2]
-                if status_code in stats:
-                    stats[status_code] += 1
-            except BaseException:
-                pass
-            try:
-                filesize += int(data[-1])
-            except BaseException:
-                pass
-            if count % 10 == 0:
-                print_stats(stats, filesize)
-        print_stats(stats, filesize)
+            valid = validate_input(line.rstrip())
+            if not valid:
+                continue
+            totalsize += get_file_size(line)
+            status = get_status(line)
+            if status in stat.keys():
+                stat[status] += 1
+            line_number += 1
+            if line_number == 11:
+                print_info(totalsize, stat)
+                line_number = 1
+        if not sys.stdin.isatty():
+            print_info(totalsize, stat)
     except KeyboardInterrupt:
-        print_stats(stats, filesize)
-        raise
+        print_info(totalsize, stat)
