@@ -1,71 +1,61 @@
 #!/usr/bin/python3
-"""read from standard input and print some stats"""
-
-
-import re
 import sys
+import signal
+
+# Initialize variables
+total_size = 0
+status_codes = {200: 0, 301: 0, 400: 0, 401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
+line_count = 0
 
 
-def validate_input(line):
-    """validate the line"""
-    regx_addr = r'^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
-    regx_date = r'\[[0-9]{4}-[0-9]{2}-[0-9]{2}' +\
-        r'\s[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+\]'
-    regx_get = r'\"GET\s\/projects\/260\sHTTP\/1.1\"'
-    regx_status = r'\s[0-9]{3}\s'
-    regx_size = r'[0-9]+$'
-    x = regx_addr + r'\s-\s' + regx_date + r'\s' +\
-        regx_get + regx_status + regx_size
-    x = re.compile(x)
-    x = x.match(line)
-    if x is None:
-        return False
-    return True
+def print_stats():
+    """Print the accumulated statistics."""
+    print("File size: {}".format(total_size))
+    for code in sorted(status_codes.keys()):
+        if status_codes[code] > 0:
+            print("{}: {}".format(code, status_codes[code]))
 
 
-def get_file_size(line):
-    """get filesize of this input"""
-    regx_size = r'[0-9]+$'
-    x = re.search(regx_size, line)
-    return (int(x.group()))
+def handle_sigint(signum, frame):
+    """Signal handler for keyboard interruption."""
+    print_stats()
+    sys.exit(0)
 
 
-def get_status(line):
-    """get the status of this line"""
-    regx_status = r'\s[0-9]{3}\s'
-    x = re.search(regx_status, line)
-    x = re.search(r'[0-9]{3}', x.group())
-    return (x.group())
+# Register the signal handler
+signal.signal(signal.SIGINT, handle_sigint)
 
+for line in sys.stdin:
+    line_count += 1
+    parts = line.split()
 
-def print_info(size, stat):
-    """print the stored infomation so far"""
-    print('File size: {}'.format(size))
-    status = [200, 301, 400, 401, 403, 404, 405, 500]
-    for i in status:
-        if stat[str(i)] > 0:
-            print('{}: {}'.format(str(i), stat[str(i)]))
+    # Validate line format
+    if len(parts) < 7:
+        continue
 
+    # Extract the required parts from the line
+    ip, _, _, date, request, status_code, file_size = parts[
+        0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]
 
-if __name__ == "__main__":
-    line_number = 1
-    stat = {"200": 0, "301": 0, "400": 0,
-            "401": 0, "403": 0, "404": 0, "405": 0, "500": 0}
-    totalsize = 0
+    # Validate the request format
+    if not request.startswith('"GET /projects/260 HTTP/1.1"'):
+        continue
+
+    # Validate the status code and file size
     try:
-        for line in sys.stdin:
-            valid = validate_input(line.rstrip())
-            if not valid:
-                continue
-            totalsize += get_file_size(line)
-            status = get_status(line)
-            if status in stat.keys():
-                stat[status] += 1
-            line_number += 1
-            if line_number == 11:
-                print_info(totalsize, stat)
-                line_number = 1
-        if not sys.stdin.isatty():
-            print_info(totalsize, stat)
-    except KeyboardInterrupt:
-        print_info(totalsize, stat)
+        status_code = int(status_code)
+        file_size = int(file_size)
+    except ValueError:
+        continue
+
+    # Accumulate the metrics
+    total_size += file_size
+    if status_code in status_codes:
+        status_codes[status_code] += 1
+
+    # Print statistics every 10 lines
+    if line_count % 10 == 0:
+        print_stats()
+
+# Print final statistics if the script ends without interruption
+print_stats()
