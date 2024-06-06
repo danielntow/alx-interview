@@ -1,20 +1,25 @@
 #!/usr/bin/node
-const util = require('util');
-const request = util.promisify(require('request'));
+const request = require('request');
+
 const filmID = process.argv[2];
+const endpoint = 'https://swapi-api.hbtn.io/api/films/' + filmID;
 
-async function starwarsCharacters (filmId) {
-  const endpoint = 'https://swapi-api.hbtn.io/api/films/' + filmId;
-  let response = await (await request(endpoint)).body;
-  response = JSON.parse(response);
-  const characters = response.characters;
-
-  for (let i = 0; i < characters.length; i++) {
-    const urlCharacter = characters[i];
-    let character = await (await request(urlCharacter)).body;
-    character = JSON.parse(character);
-    console.log(character.name);
+request(endpoint, (error, response, body) => {
+  if (error) {
+    console.error('Error fetching film:', error);
+    return;
   }
-}
+  const film = JSON.parse(body);
+  const characters = film.characters;
 
-starwarsCharacters(filmID);
+  characters.forEach((urlCharacter) => {
+    request(urlCharacter, (err, res, charBody) => {
+      if (err) {
+        console.error('Error fetching character:', err);
+        return;
+      }
+      const character = JSON.parse(charBody);
+      console.log(character.name);
+    });
+  });
+});
