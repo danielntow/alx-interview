@@ -3,12 +3,13 @@
 island perimeter module
 """
 
+
 def island_perimeter(grid):
     """
     Calculates the perimeter of the island described in grid.
 
     Args:
-        grid (list of list of int): 2D grid where 1 represents land 
+        grid (list of list of int): 2D grid where 1 represents land
         and 0 represents water.
 
     Returns:
@@ -30,17 +31,16 @@ def island_perimeter(grid):
     rows = len(grid)
     cols = len(grid[0]) if rows > 0 else 0
     perimeter = 0
-    
+
     for i in range(rows):
         for j in range(cols):
             if grid[i][j] == 1:
-                perimeter += 4  
+                perimeter += 4 
                 # Start with maximum perimeter for each land cell
-                # Check adjacent cells (left, right, up, down) and reduce 
+                # Check adjacent cells (left, right, up, down) and reduce
                 # perimeter if adjacent cell is land
                 if i > 0 and grid[i-1][j] == 1:
                     perimeter -= 2
                 if j > 0 and grid[i][j-1] == 1:
                     perimeter -= 2
-    
     return perimeter
