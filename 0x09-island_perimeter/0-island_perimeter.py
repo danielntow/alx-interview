@@ -27,7 +27,7 @@ def island_perimeter(grid):
     """
     if not grid or not all(isinstance(row, list) for row in grid):
         raise ValueError("Grid should be a non-empty list of lists.")
-    
+
     rows = len(grid)
     cols = len(grid[0]) if rows > 0 else 0
     perimeter = 0
@@ -35,12 +35,12 @@ def island_perimeter(grid):
     for i in range(rows):
         for j in range(cols):
             if grid[i][j] == 1:
-                perimeter += 4 
+                perimeter += 4
                 # Start with maximum perimeter for each land cell
                 # Check adjacent cells (left, right, up, down) and reduce
                 # perimeter if adjacent cell is land
-                if i > 0 and grid[i-1][j] == 1:
+                if i > 0 and grid[i - 1][j] == 1:
                     perimeter -= 2
-                if j > 0 and grid[i][j-1] == 1:
+                if j > 0 and grid[i][j - 1] == 1:
                     perimeter -= 2
     return perimeter
