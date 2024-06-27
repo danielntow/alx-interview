@@ -34,7 +34,8 @@ def island_perimeter(grid):
     for i in range(rows):
         for j in range(cols):
             if grid[i][j] == 1:
-                perimeter += 4  # Start with maximum perimeter for each land cell
+                perimeter += 4  
+                # Start with maximum perimeter for each land cell
                 # Check adjacent cells (left, right, up, down) and reduce 
                 # perimeter if adjacent cell is land
                 if i > 0 and grid[i-1][j] == 1:
